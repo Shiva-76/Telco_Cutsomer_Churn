@@ -2,13 +2,11 @@ import joblib
 import pandas as pd
 import numpy as np
 
-
+# 1. LOAD
 model = joblib.load('churn_model.pkl')
 scaler = joblib.load('scaler.pkl')
 
-print("--- CHURN PREDICTOR ---")
-
-#Defining columns
+# 2. DEFINE COLUMNS (Must match training EXACTLY)
 columns = [
     'SeniorCitizen', 'tenure', 'MonthlyCharges', 'TotalCharges', 
     'gender_Male', 'Partner_Yes', 'Dependents_Yes',
@@ -25,31 +23,75 @@ columns = [
     'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Electronic check', 'PaymentMethod_Mailed check'
 ]
 
-# creating fake customer details
+# HELPER: Get number or 0
+def get_number_or_zero(prompt):
+    try:
+        return float(input(prompt))
+    except ValueError:
+        return 0.0
 
+# HELPER: Get Yes/No and return 1 or 0
+def get_yes_no(prompt):
+    ans = input(prompt + " (y/n): ").lower()
+    return 1 if ans.startswith('y') else 0
 
-# We start with all zeros
-customer_data = pd.DataFrame(np.zeros((1, len(columns))), columns=columns)
+# 3. ASK THE USER (Expanded List)
+print("\n--- 📞 DETAILED CUSTOMER CHECK ---")
+print("(Press Enter to default to 0/No)")
 
-# Now we fill in their specific details
-customer_data['tenure'] = 72
-customer_data['MonthlyCharges'] = 20.0
-customer_data['TotalCharges'] = 90.5
-customer_data['SeniorCitizen'] = 0
-customer_data['InternetService_Fiber optic'] = 0  # Using Fiber
-customer_data['Contract_Two year'] = 1 # Using Check
+# -- The Big Numbers --
+tenure = get_number_or_zero("Months as customer: ")
+monthly_bill = get_number_or_zero("Monthly Bill ($): ")
+total_bill = get_number_or_zero("Total Charges ($): ")
 
+# -- The Crucial Categories --
+# We create a blank row
+input_data = pd.DataFrame(np.zeros((1, len(columns))), columns=columns)
 
-#scaling
-customer_data_scaled = scaler.transform(customer_data)
+# Fill Numbers
+input_data['tenure'] = tenure
+input_data['MonthlyCharges'] = monthly_bill
+input_data['TotalCharges'] = total_bill
 
-#prediction
-prediction = model.predict(customer_data_scaled)
-probability = model.predict_proba(customer_data_scaled)
+# Fill "Senior Citizen" (Demographics matter!)
+if get_yes_no("Are they a Senior Citizen?"):
+    input_data['SeniorCitizen'] = 1
 
+# Fill "Internet Type"
+net_type = input("Internet Type? (fiber/dsl/no): ").lower()
+if 'fiber' in net_type:
+    input_data['InternetService_Fiber optic'] = 1
+elif 'no' in net_type:
+    input_data['InternetService_No'] = 1
+
+# Fill "Tech Support" (People with tech support rarely leave!)
+if get_yes_no("Do they have Tech Support?"):
+    input_data['TechSupport_Yes'] = 1
+
+# Fill "Payment Method" (Electronic check users leave frequently)
+pay_method = input("Payment Method? (check/card/bank): ").lower()
+if 'check' in pay_method:
+    # We assume 'Electronic check' as it's the most common risky one
+    input_data['PaymentMethod_Electronic check'] = 1
+
+# Fill "Contract"
+contract = input("Contract Length? (month/1year/2year): ").lower()
+if '2' in contract:
+    input_data['Contract_Two year'] = 1
+elif '1' in contract:
+    input_data['Contract_One year'] = 1
+# else it stays 0 (Month-to-month)
+
+# 4. PREDICT
+input_data_scaled = scaler.transform(input_data)
+prediction = model.predict(input_data_scaled)
+probability = model.predict_proba(input_data_scaled)
+
+print("\n" + "="*30)
 if prediction[0] == 1:
-    print(f"\n🚨 ALERT: This customer is likely to CHURN (Leave)!")
-    print(f"Risk Probability: {probability[0][1]*100:.2f}%")
+    print(f"🚨 RESULT: CHURN RISK!")
+    print(f"Risk: {probability[0][1]*100:.2f}%")
 else:
-    print(f"\n✅ SAFE: This customer will likely STAY.")
-    print(f"Safety Probability: {probability[0][0]*100:.2f}%")
+    print(f"✅ RESULT: SAFE.")
+    print(f"Safety: {probability[0][0]*100:.2f}%")
+print("="*30 + "\n")
