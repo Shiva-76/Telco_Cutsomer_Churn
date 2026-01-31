@@ -3,7 +3,7 @@ import joblib
 import pandas as pd
 import numpy as np
 
-# 1. LOAD THE MODEL
+
 # We use @st.cache_resource so it only loads once (makes it faster)
 @st.cache_resource
 def load_model():
@@ -13,12 +13,11 @@ def load_model():
 
 model, scaler = load_model()
 
-# 2. TITLE AND DESIGN
+# Title
 st.title("🔮 Telco Customer Churn Predictor")
 st.write("Enter customer details below to check if they are likely to cancel their service.")
 
-# 3. CREATE INPUT FORM
-# We split the screen into two columns for a better look
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -35,13 +34,12 @@ with col2:
 with st.expander("Show Advanced Options (Demographics & Services)"):
     senior = st.checkbox("Senior Citizen")
     tech_support = st.checkbox("Has Tech Support")
-    # You can add more checkboxes here if you want!
+    # we can add extra options too
 
-# 4. PREPARE DATA FOR AI
-# This button triggers the prediction
+#predict button
 if st.button("Predict Churn Risk"):
     
-    # Define columns exactly as the model expects
+    #Defining Columns
     columns = [
         'SeniorCitizen', 'tenure', 'MonthlyCharges', 'TotalCharges', 
         'gender_Male', 'Partner_Yes', 'Dependents_Yes',
@@ -58,10 +56,10 @@ if st.button("Predict Churn Risk"):
         'PaymentMethod_Credit card (automatic)', 'PaymentMethod_Electronic check', 'PaymentMethod_Mailed check'
     ]
     
-    # Create a row of zeros
+    # initialising data with 0's
     input_df = pd.DataFrame(np.zeros((1, len(columns))), columns=columns)
     
-    # Fill in the user inputs
+    # User input
     input_df['tenure'] = tenure
     input_df['MonthlyCharges'] = monthly_charges
     input_df['TotalCharges'] = total_charges
@@ -90,7 +88,7 @@ if st.button("Predict Churn Risk"):
     prediction = model.predict(input_scaled)
     probability = model.predict_proba(input_scaled)
 
-    # 5. SHOW RESULTS
+    # Result
     st.markdown("---")
     if prediction[0] == 1:
         st.error(f"🚨 **HIGH RISK!** This customer is likely to churn.")
